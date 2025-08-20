@@ -9,7 +9,7 @@ async function bootstrap() {
   app.enableCors();
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-  const server = await app.listen(3001, '0.0.0.0');
+  const server = await app.listen(3000, '0.0.0.0');
   server.setTimeout(600000);
 }
 bootstrap();
