@@ -54,4 +54,17 @@ export class AppService {
 
     // return completion.choices[0].message.content || '';
   }
+
+  detectIntent(message: string): string {
+    const lower = message.toLowerCase();
+
+    if (lower.includes('apply') && lower.includes('leave')) return 'apply_leave';
+    if (lower.includes('leave') && lower.includes('balance')) return 'leave_balance';
+    if (lower.includes('leaves')) return 'leave_list';
+    if (lower.includes('notification')) return 'notification_list';
+    if (lower.includes('apply') && (lower.includes('overtime') || lower.includes('ot'))) return 'apply_ot';
+
+    return 'general';
+  }
+
 }
