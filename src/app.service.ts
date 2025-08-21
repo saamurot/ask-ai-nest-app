@@ -65,7 +65,10 @@ export class AppService {
     if (lower.includes('apply') && lower.includes('leave')) return 'apply_leave';
     if (lower.includes('leaves')) return 'leave_list';
     if (lower.includes('apply') && (lower.includes('overtime') || lower.includes('ot'))) return 'apply_ot';
+    if (lower.includes('overtime') || lower.includes('ot')) return 'ot_list';
     if (lower.includes('apply') && (lower.includes('acr') || lower.includes('attendance correction'))) return 'apply_acr';
+    if (lower.includes('acr')) return 'acr_list';
+    if (lower.includes('pay') || lower.includes('slip')) return 'pay_slip';
 
     return 'general';
   }

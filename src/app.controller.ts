@@ -48,7 +48,7 @@ export class AppController {
     const intent = this.openai.detectIntent(message);
 
     if (intent === 'holiday_list') {
-      const res = await axios.get(`${process.env.API_HOST}Requests/GetHolidaysByDate?Startdate=2024-03-20&Enddate=2025-03-20`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetHolidaysByDate?Startdate=2024-03-20&Enddate=2025-03-20`);
       if (res.data.length > 0) {
         let formattedData = await this.formatData(res.data);
         return { answer: `Your holidays are as follows<br>${formattedData}` };
@@ -59,7 +59,7 @@ export class AppController {
     }
 
     if (intent === 'announcement_list') {
-      const res = await axios.get(`${process.env.API_HOST}Requests/GetAnnouncementsBySDate?Startdate=2024-03-20&Enddate=2025-03-20`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetAnnouncementsBySDate?Startdate=2024-03-20&Enddate=2025-03-20`);
       if (res.data.length > 0) {
         let formattedData = await this.formatData(res.data);
         return { answer: `Your announcements are as follows<br>${formattedData}` };
@@ -70,9 +70,9 @@ export class AppController {
     }
 
     if (intent === 'notification_list') {
-      const res = await axios.get(`${process.env.API_HOST}Attendence/GetNotificationsByEmployeeID?EmployeeID=${userId}`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetNotificationsByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'small_card');
         return { answer: `Your notifications are as follows<br>${formattedData}` };
       }
       else {
@@ -81,13 +81,13 @@ export class AppController {
     }
 
     if (intent === 'leave_balance') {
-      const res = await axios.get(`${process.env.API_HOST}Requests/GetStaffLeaveBalanceByEmployeeID?EmployeeID=${userId}`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetStaffLeaveBalanceByEmployeeID?EmployeeID=${userId}`);
       let formattedData = await this.formatData(res.data);
       return { answer: `Your leave balances are as follows<br>${formattedData}` };
     }
 
     if (intent === 'leave_list') {
-      const res = await axios.get(`${process.env.API_HOST}Requests/GetStaffLeavesByEmployeeID?EmployeeID=${userId}`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetStaffLeavesByEmployeeID?EmployeeID=${userId}`);
       let formattedData = await this.formatData(res.data);
       return { answer: `Your leaves are as follows<br>${formattedData}` };
     }
@@ -174,9 +174,15 @@ export class AppController {
       console.log(JSON.stringify(session.collectedData));
     }
 
+    if (intent === 'ot_list') {
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetEmployeeOTDetailsByEmployeeID?EmployeeID=${userId}`);
+      let formattedData = await this.formatData(res.data);
+      return { answer: `Your OT requests are as follows<br>${formattedData}` };
+    }
+
     if (intent === 'apply_ot') {
       this.session.updateSession(userId, { intent: 'apply_ot', status: 'waiting_for_ot_date' });
-      return { answer: 'Okay! Please provide the OT date (e.g., 2025-08-21). If you would like to cancel the request, Just reply cancel.' };
+      return { answer: 'Okay! Please provide the OT date (e.g., 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
     }
 
     if (session.intent === 'apply_ot') {
@@ -228,9 +234,15 @@ export class AppController {
       }
     }
 
+    if (intent === 'acr_list') {
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetAttendenceCorrectionByEmployeeID?EmployeeID=${userId}`);
+      let formattedData = await this.formatData(res.data);
+      return { answer: `Your ACR requests are as follows<br>${formattedData}` };
+    }
+
     if (intent === 'apply_acr') {
       this.session.updateSession(userId, { intent: 'apply_acr', status: 'waiting_for_acr_date' });
-      return { answer: 'Okay! Please provide the ACR date (e.g., 2025-08-21). If you would like to cancel the request, Just reply cancel.' };
+      return { answer: 'Okay! Please provide the ACR date (e.g., 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
     }
 
     if (session.intent === 'apply_acr') {
@@ -278,6 +290,54 @@ export class AppController {
           return { answer: `✅ ACR applied for ${session.collectedData['date']} from ${session.collectedData['starttime']} to ${session.collectedData['endtime']}.` };
         } else {
           return { answer: 'Please provide end time of ACR in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+    }
+
+    if (intent === 'pay_slip') {
+      this.session.updateSession(userId, { intent: 'pay_slip', status: 'waiting_for_pay_slip_year' });
+      return { answer: 'Okay! Please provide the year (e.g., 2025).<br><br> If you would like to cancel the request, Just reply cancel.' };
+    }
+
+    if (session.intent === 'pay_slip') {
+      if (session.status === 'waiting_for_pay_slip_year') {
+        const regex = /^(19|20)\d{2}$/;
+        if (regex.test(message)) {
+          session.collectedData['year'] = message;
+          this.session.updateSession(userId, { status: 'waiting_for_pay_slip_month' });
+          return { answer: 'Got it 👍 Now tell me the month you want the pay slip for (e.g., January, February, March). <br><br> If you would like to cancel the request, Just reply cancel.' };
+        } else {
+          return { answer: 'Please provide the valid year in YYYY format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_pay_slip_month') {
+        const months = [
+          "january", "february", "march", "april", "may", "june",
+          "july", "august", "september", "october", "november", "december"
+        ];
+        if (months.includes(message.toLowerCase())) {
+          const index = months.indexOf(message.toLowerCase());
+          const monthMap: Record<string, string> = {
+            january: "1",
+            february: "2",
+            march: "3",
+            april: "4",
+            may: "5",
+            june: "6",
+            july: "7",
+            august: "8",
+            september: "9",
+            october: "10",
+            november: "11",
+            december: "12"
+          };
+          session.collectedData['monthnumber'] = monthMap[message.toLowerCase()]
+          const res = await this.getPaySlip(userId, session.collectedData);
+          this.session.updateSession(userId, { status: 'done' });
+          return { answer: res };
+        } else {
+          return { answer: 'Please provide valid month.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
       }
     }
@@ -388,7 +448,7 @@ export class AppController {
       "HalfDayType": halfDayType
     };
     console.log("leave payload", etty);
-    const res = await axios.post(`${process.env.API_HOST}Requests/InsertStaffLeavesByEmployeeID`, etty);
+    const res = await axios.post(`${process.env.API_HOST}Chat/InsertStaffLeavesByEmployeeID`, etty);
     return;
   }
 
@@ -403,7 +463,7 @@ export class AppController {
       "AppliedBy": "Self"
     };
     console.log("ot payload", etty);
-    const res = await axios.post(`${process.env.API_HOST}Requests/InsertEmployeeOTDetailsByEmployeeID`, etty);
+    const res = await axios.post(`${process.env.API_HOST}Chat/InsertEmployeeOTDetailsByEmployeeID`, etty);
   }
 
   async applyACR(userId: string, data: any) {
@@ -417,7 +477,21 @@ export class AppController {
       "WorkType": "Work From Home"
     };
     console.log("acr payload", etty);
-    const res = await axios.post(`${process.env.API_HOST}Requests/InsertAttendenceCorrectionByEmployeeID`, etty);
+    const res = await axios.post(`${process.env.API_HOST}Chat/InsertAttendenceCorrectionByEmployeeID`, etty);
+  }
+
+  async getPaySlip(userId: string, data: any) {
+    let month = data["monthnumber"];
+    console.log("monthnumber", month);
+    const res = await axios.get(`https://103.12.1.76/AmazeAIAPI/Chat/CheckPayslipByEmployeeID?EmployeeID=${userId}&Year=${data["year"]}&Month=1`);
+    console.log("payslip response", res.data);
+    if (res.data.message == "Success") {
+      let resp = `<label><a href="https://103.12.1.76/AmazeAIAPI/Payslips/${userId}/${data["year"]}/1/${userId}Payslip.pdf" target="_blank">Click here</a> to download the pay slip</label>`
+      return resp;
+    }
+    else {
+      return "Pay slip is not available for the given year and month.";
+    }
   }
 
 
@@ -427,12 +501,12 @@ export class AppController {
   //to be moved to app.service.ts later once all the logic is done
   formatData(data: any, type: any = "table") {
     if (type == "table") {
-      let html = '<table border="1" cellspacing="0" cellpadding="5">';
+      let html = '<table border="1" cellspacing="0" cellpadding="5" style="width: 100%;">';
       html += '<thead><tr>';
 
       // Table headers
       Object.keys(data[0]).forEach((key) => {
-        html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
+        html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key.replace(/([a-z])([A-Z])/g, '$1 $2')}</th>`;
       });
       html += '</tr></thead>';
 
@@ -447,6 +521,31 @@ export class AppController {
       });
       html += '</tbody></table>';
 
+      return html;
+    }
+    else if (type == 'small_card') {
+      let html = `<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 2%;">`;
+      data.forEach(item => {
+        let carditems = `<div class="card p-2 mb-3" style="width: 32%;"><table border="1" cellspacing="0" cellpadding="5">`;
+        for (let key in item) {
+          if (item.hasOwnProperty(key) && item[key] !== null) {
+            carditems += "<tr>"
+            carditems += `
+             <th style='text-transform: capitalize;border: 1px solid black;'>
+                ${key.replace(/([a-z])([A-Z])/g, '$1 $2')}:
+              </th>
+              <td style='border: 1px solid black;'>
+                ${item[key]}
+              </td>
+          `;
+            carditems += "</tr>"
+          }
+        }
+        html += carditems + "</table></div>";
+      });
+
+      html += `</div>`;
+      console.log(html);
       return html;
     }
   }
