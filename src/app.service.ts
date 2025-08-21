@@ -12,7 +12,7 @@ export class AppService {
   }
 
   getHello(): string {
-    return 'Hello World!';
+    return 'Server is Alive!';
   }
 
   async getEmbedding(text: string): Promise<number[]> {
@@ -65,6 +65,7 @@ export class AppService {
     if (lower.includes('apply') && lower.includes('leave')) return 'apply_leave';
     if (lower.includes('leaves')) return 'leave_list';
     if (lower.includes('apply') && (lower.includes('overtime') || lower.includes('ot'))) return 'apply_ot';
+    if (lower.includes('apply') && (lower.includes('acr') || lower.includes('attendance correction'))) return 'apply_acr';
 
     return 'general';
   }

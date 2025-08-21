@@ -23,6 +23,16 @@ export class AppController {
     return this.openai.getHello();
   }
 
+  @Get('deleteVectorData')
+  async deleteVectorData() {
+    return this.vector.deleteVectorData();
+  }
+
+  @Get('getVectorCount')
+  async getVectorCount() {
+    return this.vector.getVectorCount();
+  }
+
   @Post('chat')
   async chat(@Body('message') message: string, @Body('userId') userId: string) {
 
@@ -40,27 +50,8 @@ export class AppController {
     if (intent === 'holiday_list') {
       const res = await axios.get(`${process.env.API_HOST}Requests/GetHolidaysByDate?Startdate=2024-03-20&Enddate=2025-03-20`);
       if (res.data.length > 0) {
-        let html = 'Your holidays are as follows<br><table border="1" cellspacing="0" cellpadding="5">';
-        html += '<thead><tr>';
-
-        // Table headers
-        Object.keys(res.data[0]).forEach((key) => {
-          html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
-        });
-        html += '</tr></thead>';
-
-        // Table rows
-        html += '<tbody>';
-        res.data.forEach((row) => {
-          html += '<tr>';
-          Object.values(row).forEach((val) => {
-            html += `<td style='border: 1px solid black;'>${val}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
-
-        return { answer: html };
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your holidays are as follows<br>${formattedData}` };
       }
       else {
         return { answer: "No data available." };
@@ -70,27 +61,8 @@ export class AppController {
     if (intent === 'announcement_list') {
       const res = await axios.get(`${process.env.API_HOST}Requests/GetAnnouncementsBySDate?Startdate=2024-03-20&Enddate=2025-03-20`);
       if (res.data.length > 0) {
-        let html = 'Below are the announcements<br><table border="1" cellspacing="0" cellpadding="5">';
-        html += '<thead><tr>';
-
-        // Table headers
-        Object.keys(res.data[0]).forEach((key) => {
-          html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
-        });
-        html += '</tr></thead>';
-
-        // Table rows
-        html += '<tbody>';
-        res.data.forEach((row) => {
-          html += '<tr>';
-          Object.values(row).forEach((val) => {
-            html += `<td style='border: 1px solid black;'>${val}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
-
-        return { answer: html };
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your announcements are as follows<br>${formattedData}` };
       }
       else {
         return { answer: "No data available." };
@@ -100,27 +72,8 @@ export class AppController {
     if (intent === 'notification_list') {
       const res = await axios.get(`${process.env.API_HOST}Attendence/GetNotificationsByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let html = 'Your notifications are as follows<br><table border="1" cellspacing="0" cellpadding="5">';
-        html += '<thead><tr>';
-
-        // Table headers
-        Object.keys(res.data[0]).forEach((key) => {
-          html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
-        });
-        html += '</tr></thead>';
-
-        // Table rows
-        html += '<tbody>';
-        res.data.forEach((row) => {
-          html += '<tr>';
-          Object.values(row).forEach((val) => {
-            html += `<td style='border: 1px solid black;'>${val}</td>`;
-          });
-          html += '</tr>';
-        });
-        html += '</tbody></table>';
-
-        return { answer: html };
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your notifications are as follows<br>${formattedData}` };
       }
       else {
         return { answer: "No data available." };
@@ -129,52 +82,14 @@ export class AppController {
 
     if (intent === 'leave_balance') {
       const res = await axios.get(`${process.env.API_HOST}Requests/GetStaffLeaveBalanceByEmployeeID?EmployeeID=${userId}`);
-      let html = 'Your leave balances are as follows<br><table border="1" cellspacing="0" cellpadding="5">';
-      html += '<thead><tr>';
-
-      // Table headers
-      Object.keys(res.data[0]).forEach((key) => {
-        html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
-      });
-      html += '</tr></thead>';
-
-      // Table rows
-      html += '<tbody>';
-      res.data.forEach((row) => {
-        html += '<tr>';
-        Object.values(row).forEach((val) => {
-          html += `<td style='border: 1px solid black;'>${val}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-
-      return { answer: html };
+      let formattedData = await this.formatData(res.data);
+      return { answer: `Your leave balances are as follows<br>${formattedData}` };
     }
 
     if (intent === 'leave_list') {
       const res = await axios.get(`${process.env.API_HOST}Requests/GetStaffLeavesByEmployeeID?EmployeeID=${userId}`);
-      let html = 'Your leaves are as follows<br><table border="1" cellspacing="0" cellpadding="5">';
-      html += '<thead><tr>';
-
-      // Table headers
-      Object.keys(res.data[0]).forEach((key) => {
-        html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
-      });
-      html += '</tr></thead>';
-
-      // Table rows
-      html += '<tbody>';
-      res.data.forEach((row) => {
-        html += '<tr>';
-        Object.values(row).forEach((val) => {
-          html += `<td style='border: 1px solid black;'>${val}</td>`;
-        });
-        html += '</tr>';
-      });
-      html += '</tbody></table>';
-
-      return { answer: html };
+      let formattedData = await this.formatData(res.data);
+      return { answer: `Your leaves are as follows<br>${formattedData}` };
     }
 
     if (intent === 'apply_leave') {
@@ -270,22 +185,99 @@ export class AppController {
         const dates = message.match(dateRegex);
         if (dates) {
           session.collectedData['date'] = dates[0];
-          this.session.updateSession(userId, { status: 'waiting_for_ot_hours' });
-          return { answer: 'Got it 👍 Now tell me how many hours of OT you worked. If you would like to cancel the request, Just reply cancel.' };
+          this.session.updateSession(userId, { status: 'waiting_for_ot_starttime' });
+          return { answer: 'Got it 👍 Now tell me the start time of ot in HH:MM format. <br><br> If you would like to cancel the request, Just reply cancel.' };
         } else {
-          return { answer: 'Please provide the OT date in YYYY-MM-DD format. If you would like to cancel the request, Just reply cancel.' };
+          return { answer: 'Please provide the OT date in YYYY-MM-DD format.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
       }
 
-      if (session.status === 'waiting_for_ot_hours') {
-        const hoursRegex = /\d+/;
-        const hours = message.match(hoursRegex);
-        if (hours) {
-          session.collectedData['hours'] = hours[0];
-          this.session.updateSession(userId, { status: 'done' });
-          return { answer: `✅ Overtime applied for ${session.collectedData['date']} with ${hours[0]} hours.<br><b>This api is yet to be binded. OT is just a UX flow</b>` };
+      if (session.status === 'waiting_for_ot_starttime') {
+        const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let starttime = regex.test(message);
+        if (starttime) {
+          session.collectedData['starttime'] = message;
+          this.session.updateSession(userId, { status: 'waiting_for_ot_endtime' });
+          return { answer: 'Got it 👍 Now tell me the end time of ot in HH:MM (24 hour) format. <br><br> If you would like to cancel the request, Just reply cancel.' };
         } else {
-          return { answer: 'Please provide OT hours as a number (e.g., 3). If you would like to cancel the request, Just reply cancel.' };
+          return { answer: 'Please provide start time of ot in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_ot_endtime') {
+        const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let endtime = regex.test(message);
+        if (endtime) {
+          session.collectedData['endtime'] = message;
+          this.session.updateSession(userId, { status: 'waiting_for_ot_reason' });
+          return { answer: 'Got it 👍 Now tell me the reason for OT.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        } else {
+          return { answer: 'Please provide end time of ot in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_ot_reason') {
+        if (message) {
+          session.collectedData['reason'] = message;
+          await this.applyOT(userId, session.collectedData);
+          this.session.updateSession(userId, { status: 'done' });
+          return { answer: `✅ Overtime applied for ${session.collectedData['date']} from ${session.collectedData['starttime']} to ${session.collectedData['endtime']}.` };
+        } else {
+          return { answer: 'Please provide end time of ot in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+    }
+
+    if (intent === 'apply_acr') {
+      this.session.updateSession(userId, { intent: 'apply_acr', status: 'waiting_for_acr_date' });
+      return { answer: 'Okay! Please provide the ACR date (e.g., 2025-08-21). If you would like to cancel the request, Just reply cancel.' };
+    }
+
+    if (session.intent === 'apply_acr') {
+      if (session.status === 'waiting_for_acr_date') {
+        const dateRegex = /\d{4}-\d{2}-\d{2}/g;
+        const dates = message.match(dateRegex);
+        if (dates) {
+          session.collectedData['date'] = dates[0];
+          this.session.updateSession(userId, { status: 'waiting_for_acr_starttime' });
+          return { answer: 'Got it 👍 Now tell me the start time of ACR in HH:MM format. <br><br> If you would like to cancel the request, Just reply cancel.' };
+        } else {
+          return { answer: 'Please provide the ACR date in YYYY-MM-DD format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_acr_starttime') {
+        const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let starttime = regex.test(message);
+        if (starttime) {
+          session.collectedData['starttime'] = message;
+          this.session.updateSession(userId, { status: 'waiting_for_acr_endtime' });
+          return { answer: 'Got it 👍 Now tell me the end time of ACR in HH:MM (24 hour) format. <br><br> If you would like to cancel the request, Just reply cancel.' };
+        } else {
+          return { answer: 'Please provide start time of ACR in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_acr_endtime') {
+        const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+        let endtime = regex.test(message);
+        if (endtime) {
+          session.collectedData['endtime'] = message;
+          this.session.updateSession(userId, { status: 'waiting_for_acr_reason' });
+          return { answer: 'Got it 👍 Now tell me the reason for ACR.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        } else {
+          return { answer: 'Please provide end time of ACR in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
+        }
+      }
+
+      if (session.status === 'waiting_for_acr_reason') {
+        if (message) {
+          session.collectedData['reason'] = message;
+          await this.applyACR(userId, session.collectedData);
+          this.session.updateSession(userId, { status: 'done' });
+          return { answer: `✅ ACR applied for ${session.collectedData['date']} from ${session.collectedData['starttime']} to ${session.collectedData['endtime']}.` };
+        } else {
+          return { answer: 'Please provide end time of ACR in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
       }
     }
@@ -395,21 +387,68 @@ export class AppController {
       "NumberofDays": numberODays,
       "HalfDayType": halfDayType
     };
-    console.log("leave body", etty);
+    console.log("leave payload", etty);
     const res = await axios.post(`${process.env.API_HOST}Requests/InsertStaffLeavesByEmployeeID`, etty);
     return;
   }
 
-  @Get('deleteVectorData')
-  async deleteVectorData() {
-    return this.vector.deleteVectorData();
+  async applyOT(userId: string, data: any) {
+    var etty = {
+      "OTDate": data["date"],
+      "StartTime": data["date"] + " " + data["starttime"],
+      "EndTime": data["date"] + " " + data["endtime"],
+      "AttachmentURL": "NA",
+      "Purpose": data['reason'],
+      "EmployeeID": userId,
+      "AppliedBy": "Self"
+    };
+    console.log("ot payload", etty);
+    const res = await axios.post(`${process.env.API_HOST}Requests/InsertEmployeeOTDetailsByEmployeeID`, etty);
   }
 
-  @Get('getVectorCount')
-  async getVectorCount() {
-    return this.vector.getVectorCount();
+  async applyACR(userId: string, data: any) {
+    var etty = {
+      "EmployeeID": userId,
+      "Date": data["date"],
+      "StartTime": data["date"] + " " + data["starttime"],
+      "EndTime": data["date"] + " " + data["endtime"],
+      "Comments": data['reason'],
+      "Status": "Manager Pending",
+      "WorkType": "Work From Home"
+    };
+    console.log("acr payload", etty);
+    const res = await axios.post(`${process.env.API_HOST}Requests/InsertAttendenceCorrectionByEmployeeID`, etty);
   }
 
 
+
+
+
+  //to be moved to app.service.ts later once all the logic is done
+  formatData(data: any, type: any = "table") {
+    if (type == "table") {
+      let html = '<table border="1" cellspacing="0" cellpadding="5">';
+      html += '<thead><tr>';
+
+      // Table headers
+      Object.keys(data[0]).forEach((key) => {
+        html += `<th style='text-transform: capitalize;border: 1px solid black;'>${key}</th>`;
+      });
+      html += '</tr></thead>';
+
+      // Table rows
+      html += '<tbody>';
+      data.forEach((row) => {
+        html += '<tr>';
+        Object.values(row).forEach((val) => {
+          html += `<td style='border: 1px solid black;'>${val}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+
+      return html;
+    }
+  }
 
 }
