@@ -42,6 +42,26 @@ export class AppController {
     return await this.processData(message, userId);
   }
 
+  @Post('generateTTS')
+  async generateTTS(@Body('text') text: string, @Body('type') type: string) {
+    if (type == "openai") {
+      const audioBase64 = await this.ttsService.textToSpeechOpenAI(text);
+      return { audioBase64 };
+    }
+    else {
+      const audioBase64 = await this.ttsService.textToSpeechGoogle(text);
+      let resp = `data:audio/mp3;base64,${audioBase64}`
+      return { audioBase64: resp };
+    }
+  }
+
+  @Post('transcribe')
+  async transcribe(@Body('base64Audio') base64Audio: string, @Body('userId') userId: string) {
+    const text = await this.ttsService.speechToTextOpenAI(base64Audio);
+    console.log("transcribed text", text);
+    return await this.processData(text, userId);
+  }
+
   async processData(message: string, userId: string) {
     const lower = message.toLowerCase().trim();
     if (['cancel', 'stop', 'reset'].includes(lower)) {
@@ -55,9 +75,9 @@ export class AppController {
     const intent = this.openai.detectIntent(message);
 
     if (intent === 'holiday_list') {
-      const res = await axios.get(`${process.env.API_HOST}Chat/GetHolidaysByDate?Startdate=2024-03-20&Enddate=2025-03-20`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetHolidaysByDate`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your holidays are as follows<br>${formattedData}` };
       }
       else {
@@ -66,9 +86,9 @@ export class AppController {
     }
 
     if (intent === 'announcement_list') {
-      const res = await axios.get(`${process.env.API_HOST}Chat/GetAnnouncementsBySDate?Startdate=2024-03-20&Enddate=2025-03-20`);
+      const res = await axios.get(`${process.env.API_HOST}Chat/GetAnnouncementsBySDate`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your announcements are as follows<br>${formattedData}` };
       }
       else {
@@ -79,7 +99,7 @@ export class AppController {
     if (intent === 'notification_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetNotificationsByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data, 'small_card');
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your notifications are as follows<br>${formattedData}` };
       }
       else {
@@ -101,7 +121,7 @@ export class AppController {
     if (intent === 'leave_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetStaffLeavesByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your leaves are as follows<br>${formattedData}` };
       }
       else {
@@ -194,7 +214,7 @@ export class AppController {
     if (intent === 'ot_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetEmployeeOTDetailsByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your OT requests are as follows<br>${formattedData}` };
       }
       else {
@@ -259,7 +279,7 @@ export class AppController {
     if (intent === 'acr_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetAttendenceCorrectionByEmployeeID?EmployeeID=${userId}`);
       if (res.data.length > 0) {
-        let formattedData = await this.formatData(res.data);
+        let formattedData = await this.formatData(res.data, 'card');
         return { answer: `Your ACR requests are as follows<br>${formattedData}` };
       }
       else {
@@ -403,26 +423,6 @@ export class AppController {
     }
 
     return { message: 'PDF file indexed successfully', chunks: chunks.length };
-  }
-
-  @Post('generateTTS')
-  async generateTTS(@Body('text') text: string, @Body('type') type: string) {
-    if (type == "openai") {
-      const audioBase64 = await this.ttsService.textToSpeechOpenAI(text);
-      return { audioBase64 };
-    }
-    else {
-      const audioBase64 = await this.ttsService.textToSpeechGoogle(text);
-      let resp = `data:audio/mp3;base64,${audioBase64}`
-      return { audioBase64: resp };
-    }
-  }
-
-  @Post('transcribe')
-  async transcribe(@Body('base64Audio') base64Audio: string, @Body('userId') userId: string) {
-    const text = await this.ttsService.speechToTextOpenAI(base64Audio);
-    console.log("transcribed text", text);
-    return await this.processData(text, userId);
   }
 
   chunkText(text: string, chunkSize = 500) {
@@ -583,16 +583,16 @@ export class AppController {
 
       return html;
     }
-    else if (type == 'small_card') {
-      let html = `<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 2%;">`;
+    else if (type == 'card') {
+      let html = ``;
       data.forEach(item => {
-        let carditems = `<div class="card p-2 mb-3" style="width: 32%;"><table border="1" cellspacing="0" cellpadding="5">`;
+        let carditems = `<div class="card p-2 mb-3"><table border="1" cellspacing="0" cellpadding="5">`;
         for (let key in item) {
           if (item.hasOwnProperty(key) && item[key] !== null) {
             carditems += "<tr>"
             carditems += `
              <th style='text-transform: capitalize;border: 1px solid black;'>
-                ${key.replace(/([a-z])([A-Z])/g, '$1 $2')}:
+                ${key.replace(/([a-z])([A-Z])/g, '$1 $2')}
               </th>
               <td style='border: 1px solid black;'>
                 ${item[key]}
@@ -604,7 +604,7 @@ export class AppController {
         html += carditems + "</table></div>";
       });
 
-      html += `</div>`;
+      html += ``;
       console.log(html);
       return html;
     }
