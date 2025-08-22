@@ -27,6 +27,19 @@ export class TtsService {
         return `data:audio/mpeg;base64,${base64}`;
     }
 
+    async speechToTextOpenAI(base64Audio: string): Promise<string> {
+        const audioBuffer = Buffer.from(base64Audio, 'base64');
+        const tmpFile = 'temp.wav';
+        require('fs').writeFileSync(tmpFile, audioBuffer);
+
+        const resp = await this.openai.audio.transcriptions.create({
+            file: require('fs').createReadStream(tmpFile),
+            model: 'whisper-1',
+        });
+
+        return resp.text;
+    }
+
     async textToSpeechGoogle(text: string): Promise<string> {
         return new Promise((resolve, reject) => {
             try {

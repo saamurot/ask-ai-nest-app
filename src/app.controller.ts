@@ -39,7 +39,10 @@ export class AppController {
 
   @Post('chat')
   async chat(@Body('message') message: string, @Body('userId') userId: string) {
+    return await this.processData(message, userId);
+  }
 
+  async processData(message: string, userId: string) {
     const lower = message.toLowerCase().trim();
     if (['cancel', 'stop', 'reset'].includes(lower)) {
       this.session.clearSession(userId);
@@ -413,6 +416,13 @@ export class AppController {
       let resp = `data:audio/mp3;base64,${audioBase64}`
       return { audioBase64: resp };
     }
+  }
+
+  @Post('transcribe')
+  async transcribe(@Body('base64Audio') base64Audio: string, @Body('userId') userId: string) {
+    const text = await this.ttsService.speechToTextOpenAI(base64Audio);
+    console.log("transcribed text", text);
+    return await this.processData(text, userId);
   }
 
   chunkText(text: string, chunkSize = 500) {
