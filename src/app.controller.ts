@@ -108,7 +108,7 @@ export class AppController {
 
     if (intent === 'apply_leave') {
       // this.session.updateSession(userId, { intent: 'apply_leave', status: 'waiting_for_dates' });
-      // return { answer: 'Sure! Please provide your leave dates (e.g., 2025-08-21 to 2025-08-23). If you would like to cancel the request, Just reply cancel.' };
+      // return { answer: 'Sure! Please provide your leave dates (example, 2025-08-21 to 2025-08-23). If you would like to cancel the request, Just reply cancel.' };
       this.session.updateSession(userId, { intent: 'apply_leave', status: 'waiting_for_leavetype' });
       return { answer: `Sure! Please provide what type of leave you want to apply. Here is the leave type list : <br><b>${this.getleaveTypes().map(x => x.leaveType).join(", ")}</b>.<br><br> If you would like to cancel the request, Just reply cancel.` };
     }
@@ -121,7 +121,7 @@ export class AppController {
           session.collectedData['leaveTypeID'] = leaveTypeID.id;
           session.collectedData['leaveType'] = leaveTypeID.leaveType;
           this.session.updateSession(userId, { intent: 'apply_leave', status: 'waiting_for_dates' });
-          return { answer: 'Sure! Please provide your leave dates (e.g., 2025-08-21 to 2025-08-23).<br><br> If you would like to cancel the request, Just reply cancel.' };
+          return { answer: 'Sure! Please provide your leave dates (example, 2025-08-21 to 2025-08-23).<br><br> If you would like to cancel the request, Just reply cancel.' };
         } else {
           return { answer: 'Please provide a valid leave type from the list. <br><br>If you would like to cancel the request, Just reply cancel.' };
         }
@@ -201,7 +201,7 @@ export class AppController {
 
     if (intent === 'apply_ot') {
       this.session.updateSession(userId, { intent: 'apply_ot', status: 'waiting_for_ot_date' });
-      return { answer: 'Okay! Please provide the OT date (e.g., 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
+      return { answer: 'Okay! Please provide the OT date (example, 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
     }
 
     if (session.intent === 'apply_ot') {
@@ -266,7 +266,7 @@ export class AppController {
 
     if (intent === 'apply_acr') {
       this.session.updateSession(userId, { intent: 'apply_acr', status: 'waiting_for_acr_date' });
-      return { answer: 'Okay! Please provide the ACR date (e.g., 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
+      return { answer: 'Okay! Please provide the ACR date (example, 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
     }
 
     if (session.intent === 'apply_acr') {
@@ -320,7 +320,7 @@ export class AppController {
 
     if (intent === 'pay_slip') {
       this.session.updateSession(userId, { intent: 'pay_slip', status: 'waiting_for_pay_slip_year' });
-      return { answer: 'Okay! Please provide the year (e.g., 2025).<br><br> If you would like to cancel the request, Just reply cancel.' };
+      return { answer: 'Okay! Please provide the year (example, 2025).<br><br> If you would like to cancel the request, Just reply cancel.' };
     }
 
     if (session.intent === 'pay_slip') {
@@ -329,7 +329,7 @@ export class AppController {
         if (regex.test(message)) {
           session.collectedData['year'] = message;
           this.session.updateSession(userId, { status: 'waiting_for_pay_slip_month' });
-          return { answer: 'Got it 👍 Now tell me the month you want the pay slip for (e.g., January, February, March). <br><br> If you would like to cancel the request, Just reply cancel.' };
+          return { answer: 'Got it 👍 Now tell me the month you want the pay slip for (example, January, February, March). <br><br> If you would like to cancel the request, Just reply cancel.' };
         } else {
           return { answer: 'Please provide the valid year in YYYY format.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
@@ -403,9 +403,16 @@ export class AppController {
   }
 
   @Post('generateTTS')
-  async generateTTS(@Body('text') text: string) {
-    const audioBase64 = await this.ttsService.textToSpeech(text);
-    return { audioBase64 };
+  async generateTTS(@Body('text') text: string, @Body('type') type: string) {
+    if (type == "openai") {
+      const audioBase64 = await this.ttsService.textToSpeechOpenAI(text);
+      return { audioBase64 };
+    }
+    else {
+      const audioBase64 = await this.ttsService.textToSpeechGoogle(text);
+      let resp = `data:audio/mp3;base64,${audioBase64}`
+      return { audioBase64: resp };
+    }
   }
 
   chunkText(text: string, chunkSize = 500) {
