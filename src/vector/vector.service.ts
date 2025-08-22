@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ChromaClient, Collection, EmbeddingFunction } from 'chromadb';
 import { AppService } from 'src/app.service';
+import { OpenAiService } from 'src/open-ai/open-ai.service';
 
 const Database = require('better-sqlite3');
 
@@ -10,7 +11,7 @@ export class VectorService implements OnModuleInit {
     private chroma = new ChromaClient();
     private collection: Collection;
 
-    constructor(private openai: AppService) { }
+    constructor(private openai: OpenAiService) { }
 
     async onModuleInit() {
 

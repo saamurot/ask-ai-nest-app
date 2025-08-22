@@ -4,6 +4,8 @@ import { VectorService } from './vector/vector.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SessionService } from './session/session.service';
 import axios from 'axios';
+import { OpenAiService } from './open-ai/open-ai.service';
+import { TtsService } from './tts/tts.service';
 const mammoth = require('mammoth');
 const pdf = require('pdf-parse');
 
@@ -12,15 +14,17 @@ export class AppController {
 
   constructor(
     private vector: VectorService,
-    private openai: AppService,
+    private openai: OpenAiService,
+    private app: AppService,
     private session: SessionService,
+    private ttsService: TtsService
   ) { }
 
   @Get()
   async getHello() {
     // await this.vector.addDocument('doc1', 'Our company allows 12 annual leaves per year.');
     // await this.vector.addDocument('doc2', 'Service Incentive Leave (SIL) : 5 days of paid leave per year after one year of service. This can be used for personal, vacation, or emergency purposes. Unused SIL may be converted to cash at year-end. ');
-    return this.openai.getHello();
+    return this.app.getHello();
   }
 
   @Get('deleteVectorData')
@@ -82,14 +86,24 @@ export class AppController {
 
     if (intent === 'leave_balance') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetStaffLeaveBalanceByEmployeeID?EmployeeID=${userId}`);
-      let formattedData = await this.formatData(res.data);
-      return { answer: `Your leave balances are as follows<br>${formattedData}` };
+      if (res.data.length > 0) {
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your leave balances are as follows<br>${formattedData}` };
+      }
+      else {
+        return { answer: "No data available." };
+      }
     }
 
     if (intent === 'leave_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetStaffLeavesByEmployeeID?EmployeeID=${userId}`);
-      let formattedData = await this.formatData(res.data);
-      return { answer: `Your leaves are as follows<br>${formattedData}` };
+      if (res.data.length > 0) {
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your leaves are as follows<br>${formattedData}` };
+      }
+      else {
+        return { answer: "No data available." };
+      }
     }
 
     if (intent === 'apply_leave') {
@@ -137,7 +151,7 @@ export class AppController {
           else {
             this.session.updateSession(userId, { status: 'done' });
             await this.applyLeave(userId, session.collectedData);
-            return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Date</b> : ${session.collectedData['reason']}` };
+            return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Reason</b> : ${session.collectedData['reason']}` };
           }
         } else {
           return { answer: 'Please provide a valid reason.<br><br> If you would like to cancel the request, Just reply cancel.' };
@@ -155,7 +169,7 @@ export class AppController {
           session.collectedData['halfDay'] = message.toLowerCase();
           this.session.updateSession(userId, { status: 'done' });
           await this.applyLeave(userId, session.collectedData);
-          return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Date</b> : ${session.collectedData['reason']}` };
+          return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Reason</b> : ${session.collectedData['reason']}` };
         } else {
           return { answer: 'Please provide a valid reply.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
@@ -166,7 +180,7 @@ export class AppController {
           session.collectedData['halfdaytype'] = message.toLowerCase();
           this.session.updateSession(userId, { status: 'done' });
           await this.applyLeave(userId, session.collectedData);
-          return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Date</b> : ${session.collectedData['reason']}<br><b>Half Day</b> : ${session.collectedData['halfDay']}<br><b>Half Day Type</b> : ${session.collectedData['halfdaytype']}` };
+          return { answer: `✅ Leave applied with below details: <br><b>Leave Type</b> : ${session.collectedData['leaveType']}<br><b>Date</b> : ${session.collectedData['dates'].join(' to ')}<br><b>Reason</b> : ${session.collectedData['reason']}<br><b>Half Day</b> : ${session.collectedData['halfDay']}<br><b>Half Day Type</b> : ${session.collectedData['halfdaytype']}` };
         } else {
           return { answer: 'Please provide a valid reply.<br><br> If you would like to cancel the request, Just reply cancel.' };
         }
@@ -176,8 +190,13 @@ export class AppController {
 
     if (intent === 'ot_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetEmployeeOTDetailsByEmployeeID?EmployeeID=${userId}`);
-      let formattedData = await this.formatData(res.data);
-      return { answer: `Your OT requests are as follows<br>${formattedData}` };
+      if (res.data.length > 0) {
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your OT requests are as follows<br>${formattedData}` };
+      }
+      else {
+        return { answer: "No data available." };
+      }
     }
 
     if (intent === 'apply_ot') {
@@ -236,8 +255,13 @@ export class AppController {
 
     if (intent === 'acr_list') {
       const res = await axios.get(`${process.env.API_HOST}Chat/GetAttendenceCorrectionByEmployeeID?EmployeeID=${userId}`);
-      let formattedData = await this.formatData(res.data);
-      return { answer: `Your ACR requests are as follows<br>${formattedData}` };
+      if (res.data.length > 0) {
+        let formattedData = await this.formatData(res.data);
+        return { answer: `Your ACR requests are as follows<br>${formattedData}` };
+      }
+      else {
+        return { answer: "No data available." };
+      }
     }
 
     if (intent === 'apply_acr') {
@@ -378,6 +402,12 @@ export class AppController {
     return { message: 'PDF file indexed successfully', chunks: chunks.length };
   }
 
+  @Post('generateTTS')
+  async generateTTS(@Body('text') text: string) {
+    const audioBase64 = await this.ttsService.textToSpeech(text);
+    return { audioBase64 };
+  }
+
   chunkText(text: string, chunkSize = 500) {
     const words = text.split(/\s+/);
     const chunks = [];
@@ -481,15 +511,28 @@ export class AppController {
   }
 
   async getPaySlip(userId: string, data: any) {
-    let month = data["monthnumber"];
-    console.log("monthnumber", month);
-    const res = await axios.get(`https://103.12.1.76/AmazeAIAPI/Chat/CheckPayslipByEmployeeID?EmployeeID=${userId}&Year=${data["year"]}&Month=1`);
-    console.log("payslip response", res.data);
-    if (res.data.message == "Success") {
-      let resp = `<label><a href="https://103.12.1.76/AmazeAIAPI/Payslips/${userId}/${data["year"]}/1/${userId}Payslip.pdf" target="_blank">Click here</a> to download the pay slip</label>`
-      return resp;
+    try {
+      let month = String(data["monthnumber"]).trim();
+      let year = String(data["year"]).trim();
+      let url = `${process.env.API_HOST}Chat/CheckPayslipByEmployeeID?EmployeeID=${userId}&Year=${year}&Month=${month}`;
+      console.log("check url", url);
+      // const res = await axios.get(url);
+      const res = await axios.get(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+      console.log("payslip response", res.data);
+      if (res.data.message == "Success") {
+        let resp = `<label><a href="${process.env.API_HOST}Payslips/${userId}/${year}/${month}/${userId}Payslip.pdf" target="_blank">Click here</a> to download the pay slip</label>`;
+        console.log("pdf url", resp);
+        return resp;
+      }
+      else {
+        return "Pay slip is not available for the given year and month.";
+      }
     }
-    else {
+    catch (ex) {
       return "Pay slip is not available for the given year and month.";
     }
   }
