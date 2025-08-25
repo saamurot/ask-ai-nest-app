@@ -25,7 +25,6 @@ export class VectorService implements OnModuleInit {
     `).run();
         // Optional: log how many vectors already exist
         const count = this.db.prepare('SELECT COUNT(*) as cnt FROM vectors').get().cnt;
-        console.log(`SQLite loaded ${count} vectors`);
     }
 
     private vectors: { id: string; embedding: number[]; text: string }[] = [];
@@ -61,12 +60,10 @@ export class VectorService implements OnModuleInit {
     async deleteVectorData() {
         await this.db.prepare('DELETE FROM vectors').run();
         const count = this.db.prepare('SELECT COUNT(*) as cnt FROM vectors').get().cnt;
-        console.log(`SQLite loaded ${count} vectors`);
     }
 
     async getVectorCount() {
         const count = this.db.prepare('SELECT COUNT(*) as cnt FROM vectors').get().cnt;
-        console.log(`SQLite loaded ${count} vectors`);
         return count;
     }
 }
