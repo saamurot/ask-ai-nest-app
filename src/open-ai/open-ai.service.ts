@@ -65,6 +65,8 @@ export class OpenAiService {
         if (lower.includes('apply') && (lower.includes('acr') || lower.includes('attendance correction'))) return 'apply_acr';
         if (lower.includes('acr')) return 'acr_list';
         if (lower.includes('pay') || lower.includes('slip')) return 'pay_slip';
+        if (lower.includes('punch') && lower.includes('in')) return 'punch_in';
+        if (lower.includes('punch') && lower.includes('out')) return 'punch_out';
 
         return 'general';
     }

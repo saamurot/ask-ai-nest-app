@@ -381,6 +381,60 @@ export class IntentService {
             }
         }
 
+        if (intent === 'punch_in') {
+            const res = await axios.get(`${process.env.API_HOST}Chat/ShowPunchInOrOutButtonByEmployeeID?EmployeeID=${userId}`);
+            if (res.data[0].showPunchInButton == 1) {
+                var etty = {
+                    EmployeeID: userId,
+                    SigninLocation: "Home",
+                    SigninType: "Chat",
+                    PunchinIPAddress: "0.0.0.0"
+                };
+                const res = await axios.post(`${process.env.API_HOST}Chat/CheckStaffPucnhinConditionsByEmployeeID`, etty);
+                if (res.data == 0) {
+                    return { answer: `⚠️ Your shift has not started yet. Please try to punch in during your shift time during your shift time.` };
+                }
+                else {
+                    return { answer: `✅ Punched in your attendance.` };
+                }
+            }
+            else if (res.data[0].showPunchInButton == 2) {
+                return { answer: "⚠️ You have already punched in and punched out for the day." };
+            }
+            else if (res.data[0].showPunchInButton == 3) {
+                return { answer: "⚠️ You have no shift asigned for the day." };
+            }
+            else {
+                return { answer: "No data available." };
+            }
+        }
+
+        if (intent === 'punch_out') {
+            const res = await axios.get(`${process.env.API_HOST}Chat/ShowPunchInOrOutButtonByEmployeeID?EmployeeID=${userId}`);
+            if (res.data[0].showPunchInButton == 0) {
+                var ettys = {
+                    EmployeeID: userId,
+                    SignoutLocation: "Home",
+                    SignoutType: "Chat",
+                    PunchoutIPAddress: "0.0.0.0"
+                };
+                const res = await axios.post(`${process.env.API_HOST}Chat/CheckStaffPucnhoutConditionsByEmployeeID`, ettys);
+                return { answer: `✅ Punched out your attendance.` };
+            }
+            if (res.data[0].showPunchInButton == 1) {
+                return { answer: `⚠️ Please punch in before trying to punch out.` };
+            }
+            else if (res.data[0].showPunchInButton == 2) {
+                return { answer: "⚠️ You have already punched in and punched out for the day." };
+            }
+            else if (res.data[0].showPunchInButton == 3) {
+                return { answer: "⚠️ You have no shift asigned for the day." };
+            }
+            else {
+                return { answer: "No data available." };
+            }
+        }
+
         // Otherwise → RAG + OpenAI fallback
         const docs = await this.vector.query(message, 3);
         const context = docs.join('\n');
