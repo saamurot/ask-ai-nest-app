@@ -203,9 +203,20 @@ export class IntentService {
                 const dateRegex = /\d{4}-\d{2}-\d{2}/g;
                 const dates = message.match(dateRegex);
                 if (dates) {
-                    session.collectedData['date'] = dates[0];
-                    this.session.updateSession(userId, { status: 'waiting_for_ot_starttime' });
-                    return { answer: 'Got it 👍 Now tell me the start time of ot in HH:MM format. <br><br> If you would like to cancel the request, Just reply cancel.' };
+
+                    const res = await axios.get(`${process.env.API_HOST}chat/GetOTForDateValidationByEmployeeID?EmployeeID=${userId}&OTDate=${dates[0]}`);
+
+                    if (res.data[0].result == 'Proceed') {
+                        session.collectedData['date'] = dates[0];
+                        this.session.updateSession(userId, { status: 'waiting_for_ot_starttime' });
+                        return { answer: 'Got it 👍 Now tell me the start time of ot in HH:MM format. <br><br> If you would like to cancel the request, Just reply cancel.' };
+                    }
+                    else {
+                        this.session.updateSession(userId, { intent: 'apply_ot', status: 'waiting_for_ot_date' });
+                        return { answer: 'You are not allowed to add OT for the selected date. Please provide another OT date (example, 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
+                    }
+
+
                 } else {
                     return { answer: 'Please provide the OT date in YYYY-MM-DD format.<br><br> If you would like to cancel the request, Just reply cancel.' };
                 }
