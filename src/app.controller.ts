@@ -11,6 +11,29 @@ import { IntentService } from './intent/intent.service';
 const mammoth = require('mammoth');
 const pdf = require('pdf-parse');
 
+const blockedKeywords = [
+  // Entertainment / Fun
+  "joke", "funny", "meme", "cartoon", "comic", "gif", "emoji", "sticker",
+  "song", "lyrics", "movie", "story", "poem", "riddle", "quote",
+
+  // Image / Media
+  "image", "picture", "photo", "wallpaper", "drawing", "sketch", "paint",
+  "art", "design", "logo", "icon", "avatar", "edit", "generate image",
+  "photoshop", "illustration",
+
+  // Casual Chat
+  "hi", "hello", "hey", "how are you", "good morning", "good night",
+  "lol", "haha", "what's up", "bro", "dude",
+
+  // Non-business / Irrelevant
+  "game", "play", "sport", "cricket", "football", "basketball",
+  "weather", "news", "politics", "celebrity", "gossip",
+
+  // Development / Off-topic
+  "code", "programming", "typescript", "angular", "nestjs",
+  "react", "python", "java", "sql", "script", "error",
+];
+
 @Controller()
 export class AppController {
 
@@ -42,7 +65,13 @@ export class AppController {
 
   @Post('chat')
   async chat(@Body('message') message: string, @Body('userId') userId: string) {
-    return await this.intent.processData(message, userId);
+    if (blockedKeywords.some(k => message.toLowerCase().includes(k))) {
+      return { answer: "⚠️ This chat is designed for HR support. Try asking about leave, attendance, policies etc." };
+    }
+    else {
+      let response = await this.intent.processData(message, userId);
+      return response;
+    }
   }
 
   @Post('generateTTS')

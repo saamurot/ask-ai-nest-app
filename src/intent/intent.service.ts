@@ -293,8 +293,18 @@ export class IntentService {
                 let endtime = regex.test(message);
                 if (endtime) {
                     session.collectedData['endtime'] = message;
-                    this.session.updateSession(userId, { status: 'waiting_for_acr_reason' });
-                    return { answer: 'Got it 👍 Now tell me the reason for ACR.<br><br> If you would like to cancel the request, Just reply cancel.' };
+
+                    const res = await axios.get(`${process.env.API_HOST}chat/GetACRForDateValidationByEmployeeID?EmployeeID=${userId}&ACRDate=${session.collectedData['date']}&StartTime=${session.collectedData['starttime']}&EndTime=${session.collectedData['starttime']}`);
+
+                    if (res.data[0].result == "Proceed") {
+                        this.session.updateSession(userId, { status: 'waiting_for_acr_reason' });
+                        return { answer: 'Got it 👍 Now tell me the reason for ACR.<br><br> If you would like to cancel the request, Just reply cancel.' };
+                    }
+                    else {
+                        this.session.updateSession(userId, { intent: 'apply_acr', status: 'waiting_for_acr_date' });
+                        return { answer: 'You are not allowed to apply for ACR for the given date. Please try adding ACR for different date date (example, 2025-08-21).<br><br> If you would like to cancel the request, Just reply cancel.' };
+                    }
+
                 } else {
                     return { answer: 'Please provide end time of ACR in HH:MM (24 hour) format.<br><br> If you would like to cancel the request, Just reply cancel.' };
                 }
